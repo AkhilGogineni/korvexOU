@@ -3,14 +3,9 @@
 #include "drivercontrol.hpp"
 #include "devices.hpp"
 #include "autons.hpp"
-
-
-/**
- * Runs initialization code. This occurs as soon as the program is started.
- *
- * All other competition modes are blocked by initialize; it is recommended
- * to keep execution time for this mode under a few seconds.
- */
+#include "gif-pros/gifclass.hpp"
+#include "screen.hpp"
+#include "display/lvgl.h" 
 
 enum class autonStates { // the possible auton selections
 	off,
@@ -48,15 +43,9 @@ static lv_res_t SkillsBtnAction(lv_obj_t *btn) {
 }
 
 static lv_res_t ResetBtnAction(lv_obj_t *btn) {
-	imu.reset();
+	
 
-	left_side_motors.tare_position();
-	right_side_motors.tare_position();
-
-	while (imu.is_calibrating() and pros::millis() < 5000)
-	{
-		pros::delay(10);
-	}
+	
 	if (pros::millis() < 5000) std::cout << pros::millis() << ": finished calibrating!" << std::endl;
 	return LV_RES_OK;
 }
@@ -68,28 +57,19 @@ static lv_res_t noAutonBtnAction(lv_obj_t *btn) {
 }
 
 
-
-
 void initialize() {
-	//pros::lcd::initialize(); 
-    // calibrate sensors
-    chassis.calibrate(); // lemlib chassis calibration
-	//odom checker
-	// pros::Task screenTask([&]() {
-    //     lemlib::Pose pose(0, 0, 0);
-    //     while (true) {
-    //         // print robot location to the brain screen
-    //         pros::lcd::print(0, "X: %f", chassis.getPose().x); // x
-    //         pros::lcd::print(1, "Y: %f", chassis.getPose().y); // y
-    //         pros::lcd::print(2, "Theta: %f", chassis.getPose().theta); // heading
-    //         // log position telemetry
-    //         lemlib::telemetrySink()->info("Chassis pose: {}", chassis.getPose());
-    //         // delay to save resources
-    //         pros::delay(50);
-    //     }
-    // });
-	
-    lv_theme_t *th = lv_theme_alien_init(360, NULL); //Set a HUE value and keep font default RED
+
+    pros::delay(500); // Stop the user from doing anything while legacy ports configure.
+ 
+
+    // calibrate the lem lib x ez temp chassis
+    calibrateBothChassis();
+
+
+    // pid and curve inits
+    ezTempChassisInits();
+    
+     lv_theme_t *th = lv_theme_alien_init(360, NULL); //Set a HUE value and keep font default RED
 	lv_theme_set_current(th);
 
 	// create a tab view object
@@ -175,14 +155,6 @@ void initialize() {
 	stick.set_value(false);
 	hang1.set_value(false);
 
-	default_constants(); // Set the drive to your own constants from autons.cpp!
-    modified_exit_condition(); // sets the drive to have cracked exit conditions
-	
-	EzTempChassis.init_curve_sd();
-    EzTempChassis.imu_calibrate();
-    EzTempChassis.reset_drive_sensor();
-
-	EzTempChassis.initialize();
 }
 
 /**
@@ -190,36 +162,21 @@ void initialize() {
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {
-	lift1.set_value(false);
-	lift2.set_value(false);
-	wing1.set_value(false);
-	wing1.set_value(false);
-	stick.set_value(false);
-	hang1.set_value(false);
-} 
+void disabled() {} 
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
 
  */
-void competition_initialize() {
-	lift1.set_value(false);
-	lift2.set_value(false);
-	wing1.set_value(false);
-	wing1.set_value(false);
-	stick.set_value(false);
-	hang1.set_value(false);
-}
+void competition_initialize() {}
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
  */
 void autonomous() {
     EzTempChassis.reset_pid_targets(); // Resets PID targets to 0
-	EzTempChassis.reset_gyro(); // Reset gyro position to 0
-	EzTempChassis.reset_drive_sensor(); // Reset drive sensors to 0
-	set_drive_to_hold();
+    EzTempChassis.reset_gyro(); // Reset gyro position to 0
+    EzTempChassis.reset_drive_sensor(); // Reset drive sensors to 0
 
     if(autonSelection == autonStates::off) {
 		autonSelection = autonStates::test;
@@ -239,7 +196,7 @@ void autonomous() {
 			skills();
 			break;
 		case autonStates::test:
-			test();
+			leftSideElims();
 			break;
 		default:
 			break;
@@ -257,18 +214,17 @@ bool stickState = false;
 bool hangState = false;
 
 void opcontrol() {
+    EzTempChassis.set_drive_brake(pros::E_MOTOR_BRAKE_COAST);
 
-	lift1.set_value(false);
-	lift2.set_value(false);
-	wing1.set_value(false);
-	wing1.set_value(false);
-	stick.set_value(false);
-	hang1.set_value(false);
-	
-    set_drive_to_coast();
+    // reset all pistons to false
 
+    // task to make sure all motors are plugged in and check the temperature of the drivetrain
+    pros::Task motorCheck(checkMotorsAndReturnTemperature);
+
+    bool flywheelOn = false;
 	while (true) {
-        chassis.tank(controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y), controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y), 3);
+        while (true) {
+            chassis.tank(controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y), controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y), 3);
 
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
 				intake.move_voltage(12000);
@@ -343,4 +299,6 @@ void opcontrol() {
         
 		pros::delay(10);
 	}
+	}
 }
+

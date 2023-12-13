@@ -22,7 +22,7 @@ extern pros::Motor leftTop;
 extern pros::MotorGroup left_side_motors;
 extern pros::MotorGroup right_side_motors;
 
-extern pros::Imu imu;
+extern pros::Imu inertial_sensor;
 
 extern pros::ADIDigitalOut wing1;
 extern pros::ADIDigitalOut wing2;
@@ -38,3 +38,11 @@ extern pros::ADIDigitalOut hang1;
 extern lemlib::Chassis chassis;
 
 extern Drive EzTempChassis;
+
+extern lemlib::Chassis chassis;
+
+extern Drive EzTempChassis;
+
+void checkMotorsAndReturnTemperature();
+void calibrateBothChassis();
+void ezTempChassisInits();

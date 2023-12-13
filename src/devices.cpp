@@ -3,10 +3,6 @@
 #include "devices.hpp"
 #include "drivercontrol.hpp"
 
-bool wingsOut = false;
-bool dropdownOut = false;
-bool ptoOn4bar = false;
-
 pros::ADIDigitalOut wing1('E');
 pros::ADIDigitalOut wing2('D');
 pros::ADIDigitalOut stick ('B');
@@ -20,12 +16,12 @@ pros::Motor slapper2 (2, pros::E_MOTOR_GEARSET_18, false, pros::E_MOTOR_ENCODER_
 
 pros::MotorGroup slapper ({slapper1, slapper2});
 
-    pros::Motor leftFront(5, pros::E_MOTOR_GEARSET_06, true); 
-    pros::Motor leftBack(4, pros::E_MOTOR_GEARSET_06, true); 
-    pros::Motor leftTop(3, pros::E_MOTOR_GEARSET_06, false); 
-    pros::Motor rightFront(14, pros::E_MOTOR_GEARSET_06, false); 
-    pros::Motor rightBack(11, pros::E_MOTOR_GEARSET_06, false); 
-    pros::Motor rightTop(12, pros::E_MOTOR_GEARSET_06, true); 
+pros::Motor leftFront(5, pros::E_MOTOR_GEARSET_06, true); 
+pros::Motor leftBack(4, pros::E_MOTOR_GEARSET_06, true); 
+pros::Motor leftTop(3, pros::E_MOTOR_GEARSET_06, false); 
+pros::Motor rightFront(14, pros::E_MOTOR_GEARSET_06, false); 
+pros::Motor rightBack(11, pros::E_MOTOR_GEARSET_06, false); 
+pros::Motor rightTop(12, pros::E_MOTOR_GEARSET_06, true); 
 
 // this is for the controller screen to alert you if a motor is unplugged
 // and tell you the temperature of the drivetrain
@@ -35,20 +31,20 @@ std::vector<pros::Motor> motors = {
     };
 
 pros::MotorGroup left_side_motors({leftFront, leftBack, leftTop});
-pros::MotorGroup right_side_motors({rightFront, rightBack, rightTop});
+pros::MotorGroup right_side_motors({rightFront, rightFront, rightTop});
 
-pros::Imu imu(17); 
+pros::Imu inertial_sensor(17); 
 
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
 
 Drive EzTempChassis (
   // Left Chassis Ports (negative port will reverse it!)
   //   the first port is the sensored port (when trackers are not used!)
-  {-5, -4, 3}
+  {3, -4, -5}
 
   // Right Chassis Ports (negative port will reverse it!)
   //   the first port is the sensored port (when trackers are not used!)
-  ,{14, 11, -12}
+  ,{-12, 11, 14}
 
   // IMU Port
   ,17
@@ -59,7 +55,7 @@ Drive EzTempChassis (
 
   // Cartridge RPM
   //   (or tick per rotation if using tracking wheels)
-  ,450
+  ,600
 
   // External Gear Ratio (MUST BE DECIMAL)
   //    (or gear ratio of tracking wheel)
@@ -91,7 +87,7 @@ lemlib::Drivetrain drivetrain (
     11.5, // track width
     2.75, // wheel diameter
     450, // wheel rpm
-    1 // chase power
+    2 // chase power
 );
 
 lemlib::OdomSensors sensors (
@@ -99,7 +95,7 @@ lemlib::OdomSensors sensors (
     nullptr, 
     nullptr, 
     nullptr,
-    &imu // inertial sensor
+    &inertial_sensor // inertial sensor
 );
 
 // forward/backward PID
@@ -156,7 +152,37 @@ void checkMotorsAndReturnTemperature() {
 }
 
 
+// inits
+void default_constants() {
+  EzTempChassis.set_slew_min_power(80, 80);
+  EzTempChassis.set_slew_distance(7, 7);
+  EzTempChassis.set_pid_constants(&EzTempChassis.headingPID, 11, 0, 20, 0);
+  EzTempChassis.set_pid_constants(&EzTempChassis.forward_drivePID, 0.45, 0, 5, 0);
+  EzTempChassis.set_pid_constants(&EzTempChassis.backward_drivePID, 0.45, 0, 5, 0);
+  EzTempChassis.set_pid_constants(&EzTempChassis.turnPID, 5, 0.003, 35, 15);
+  EzTempChassis.set_pid_constants(&EzTempChassis.swingPID, 7, 0, 45, 0);
+}
 
+void modified_exit_condition() {
+  EzTempChassis.set_exit_condition(EzTempChassis.turn_exit, 10, 3, 10, 7, 10, 10);
+  EzTempChassis.set_exit_condition(EzTempChassis.swing_exit, 10, 3, 10, 7, 10, 10);
+  EzTempChassis.set_exit_condition(EzTempChassis.drive_exit, 10, 50, 10, 150, 10, 10);
+}
 
+void calibrateBothChassis() {
+    chassis.calibrate(false); // calibrate the lem lib chassis without imu
 
+    // calibrate the chassis with imu
+    EzTempChassis.init_curve_sd();
+    EzTempChassis.imu_calibrate(false);
+    EzTempChassis.reset_drive_sensor();
+}
 
+void ezTempChassisInits() {
+    // EZ temp inits
+    EzTempChassis.toggle_modify_curve_with_controller(true); // Enables modifying the controller curve with buttons on the joysticks
+    EzTempChassis.set_active_brake(0); // Sets the active brake kP. We recommend 0.1.
+    EzTempChassis.set_curve_default(0, 0); // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)  
+    default_constants(); // Set the drive to your own constants from autons.cpp!
+    modified_exit_condition(); // sets the drive to have cracked exit conditions
+}
