@@ -2,13 +2,19 @@
 
 void default_constants();
 void modified_exit_condition();
+void exit_condition_defaults();
+void skills_constants();
 
-void doNothing();
 void Descore();
 void GoalSide();
 void Elims();
 void test();
+void skills();
+
+
+
+
 void leftSideQual();
 void leftSideElims();
 void rightSideQuals();
-void skills();
+void doNothing();

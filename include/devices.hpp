@@ -37,3 +37,4 @@ extern pros::ADIDigitalOut hang1;
 
 extern lemlib::Chassis chassis;
 
+extern Drive EzTempChassis;

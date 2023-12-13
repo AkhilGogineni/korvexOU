@@ -71,18 +71,24 @@ static lv_res_t noAutonBtnAction(lv_obj_t *btn) {
 
 
 void initialize() {
-
+	//pros::lcd::initialize(); 
     // calibrate sensors
     chassis.calibrate(); // lemlib chassis calibration
-    // calibrate the lem lib x ez temp chassis
-    //calibrateBothChassis();
-
-    // pid and curve inits
-    //ezTempChassisInits();
-    
-    // MY INITS
-    // resets all pistons to false
-
+	//odom checker
+	// pros::Task screenTask([&]() {
+    //     lemlib::Pose pose(0, 0, 0);
+    //     while (true) {
+    //         // print robot location to the brain screen
+    //         pros::lcd::print(0, "X: %f", chassis.getPose().x); // x
+    //         pros::lcd::print(1, "Y: %f", chassis.getPose().y); // y
+    //         pros::lcd::print(2, "Theta: %f", chassis.getPose().theta); // heading
+    //         // log position telemetry
+    //         lemlib::telemetrySink()->info("Chassis pose: {}", chassis.getPose());
+    //         // delay to save resources
+    //         pros::delay(50);
+    //     }
+    // });
+	
     lv_theme_t *th = lv_theme_alien_init(360, NULL); //Set a HUE value and keep font default RED
 	lv_theme_set_current(th);
 
@@ -161,6 +167,22 @@ void initialize() {
 	lv_obj_set_pos(ResetBtn, 0, 100);
 	lv_obj_align(ResetBtn, NULL, LV_ALIGN_CENTER, 0, 50);
 
+	
+	lift1.set_value(false);
+	lift2.set_value(false);
+	wing1.set_value(false);
+	wing1.set_value(false);
+	stick.set_value(false);
+	hang1.set_value(false);
+
+	default_constants(); // Set the drive to your own constants from autons.cpp!
+    modified_exit_condition(); // sets the drive to have cracked exit conditions
+	
+	EzTempChassis.init_curve_sd();
+    EzTempChassis.imu_calibrate();
+    EzTempChassis.reset_drive_sensor();
+
+	EzTempChassis.initialize();
 }
 
 /**
@@ -168,22 +190,36 @@ void initialize() {
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {} 
+void disabled() {
+	lift1.set_value(false);
+	lift2.set_value(false);
+	wing1.set_value(false);
+	wing1.set_value(false);
+	stick.set_value(false);
+	hang1.set_value(false);
+} 
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
 
  */
-void competition_initialize() {}
+void competition_initialize() {
+	lift1.set_value(false);
+	lift2.set_value(false);
+	wing1.set_value(false);
+	wing1.set_value(false);
+	stick.set_value(false);
+	hang1.set_value(false);
+}
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
  */
 void autonomous() {
-    // EzTempChassis.reset_pid_targets(); // Resets PID targets to 0
-    // EzTempChassis.reset_gyro(); // Reset gyro position to 0
-    // EzTempChassis.reset_drive_sensor(); // Reset drive sensors to 0
-    set_drive_to_coast();
+    EzTempChassis.reset_pid_targets(); // Resets PID targets to 0
+	EzTempChassis.reset_gyro(); // Reset gyro position to 0
+	EzTempChassis.reset_drive_sensor(); // Reset drive sensors to 0
+	set_drive_to_hold();
 
     if(autonSelection == autonStates::off) {
 		autonSelection = autonStates::test;
@@ -221,6 +257,14 @@ bool stickState = false;
 bool hangState = false;
 
 void opcontrol() {
+
+	lift1.set_value(false);
+	lift2.set_value(false);
+	wing1.set_value(false);
+	wing1.set_value(false);
+	stick.set_value(false);
+	hang1.set_value(false);
+	
     set_drive_to_coast();
 
 	while (true) {
@@ -239,9 +283,11 @@ void opcontrol() {
 			}
 
 			if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-				slapper.move_voltage(-12000);
+				slapper1.move_voltage(-12000);
+                slapper2.move_voltage(-12000);
 			} else {
-				slapper.move_voltage(0);				
+				slapper1.move_voltage(0);	
+                slapper2.move_voltage(0);			
 			}
 				
 			if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
@@ -298,4 +344,3 @@ void opcontrol() {
 		pros::delay(10);
 	}
 }
-

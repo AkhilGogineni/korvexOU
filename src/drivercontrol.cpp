@@ -32,6 +32,3 @@ void set_drive_to_hold() {
     rightTop.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
 }
 
-
-
-

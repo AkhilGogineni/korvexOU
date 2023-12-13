@@ -3,7 +3,9 @@
 #include "devices.hpp"
 #include "drivercontrol.hpp"
 
-
+bool wingsOut = false;
+bool dropdownOut = false;
+bool ptoOn4bar = false;
 
 pros::ADIDigitalOut wing1('E');
 pros::ADIDigitalOut wing2('D');
@@ -18,13 +20,12 @@ pros::Motor slapper2 (2, pros::E_MOTOR_GEARSET_18, false, pros::E_MOTOR_ENCODER_
 
 pros::MotorGroup slapper ({slapper1, slapper2});
 
-pros::Motor leftFront(5, pros::E_MOTOR_GEARSET_06, true);  
-pros::Motor leftBack(4, pros::E_MOTOR_GEARSET_06, true); 
-pros::Motor leftTop(3, pros::E_MOTOR_GEARSET_06, true); 
-
-pros::Motor rightFront(14, pros::E_MOTOR_GEARSET_06, false); 
-pros::Motor rightBack(9, pros::E_MOTOR_GEARSET_06, false); 
-pros::Motor rightTop(12, pros::E_MOTOR_GEARSET_06, false); 
+    pros::Motor leftFront(5, pros::E_MOTOR_GEARSET_06, true); 
+    pros::Motor leftBack(4, pros::E_MOTOR_GEARSET_06, true); 
+    pros::Motor leftTop(3, pros::E_MOTOR_GEARSET_06, false); 
+    pros::Motor rightFront(14, pros::E_MOTOR_GEARSET_06, false); 
+    pros::Motor rightBack(11, pros::E_MOTOR_GEARSET_06, false); 
+    pros::Motor rightTop(12, pros::E_MOTOR_GEARSET_06, true); 
 
 // this is for the controller screen to alert you if a motor is unplugged
 // and tell you the temperature of the drivetrain
@@ -40,16 +41,57 @@ pros::Imu imu(17);
 
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
 
+Drive EzTempChassis (
+  // Left Chassis Ports (negative port will reverse it!)
+  //   the first port is the sensored port (when trackers are not used!)
+  {-5, -4, 3}
 
+  // Right Chassis Ports (negative port will reverse it!)
+  //   the first port is the sensored port (when trackers are not used!)
+  ,{14, 11, -12}
+
+  // IMU Port
+  ,17
+
+  // Wheel Diameter (Remember, 4" wheels are actually 4.125!)
+  //    (or tracking wheel diameter)
+  ,2.75
+
+  // Cartridge RPM
+  //   (or tick per rotation if using tracking wheels)
+  ,450
+
+  // External Gear Ratio (MUST BE DECIMAL)
+  //    (or gear ratio of tracking wheel)
+  // eg. if your drive is 84:36 where the 36t is powered, your RATIO would be 2.333.
+  // eg. if your drive is 36:60 where the 60t is powered, your RATIO would be 0.6.
+  ,36.0/48.0
+
+
+  // Uncomment if using tracking wheels
+  /*
+  // Left Tracking Wheel Ports (negative port will reverse it!)
+  // ,{1, 2} // 3 wire encoder
+  // ,8 // Rotation sensor
+
+  // Right Tracking Wheel Ports (negative port will reverse it!)
+  // ,{-3, -4} // 3 wire encoder
+  // ,-9 // Rotation sensor
+  */
+
+  // Uncomment if tracking wheels are plugged into a 3 wire expander
+  // 3 Wire Port Expander Smart Port
+  // ,1
+);
 
 
 lemlib::Drivetrain drivetrain (
     &left_side_motors, // left drivetrain motors
     &right_side_motors, // right drivetrain motors
-    8, // track width
+    11.5, // track width
     2.75, // wheel diameter
     450, // wheel rpm
-    2 // chase power
+    1 // chase power
 );
 
 lemlib::OdomSensors sensors (
@@ -112,5 +154,9 @@ void checkMotorsAndReturnTemperature() {
         pros::delay(250);
     }
 }
+
+
+
+
 
 
